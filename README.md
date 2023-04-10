@@ -1,5 +1,5 @@
 # TAREFA-PRATICA-PARA-NOTA-P1
-TAREFA PRATICA PARA NOTA P1
+## TAREFA PRATICA PARA NOTA P1
 
 1. Em grupo de até 3 pessoas. 
 2. Deve ser desenvolvido em programação node.js (podendo utilizar framework express.js apenas como opcional).
@@ -14,3 +14,9 @@ TAREFA PRATICA PARA NOTA P1
 8. O modelo do arquivo é o mesmo adotado no projeto 01.
 9. A entrega deve ser realizada em link do diretório GitHub
 10. Todos do grupo devem submeter o link do GitHub a fim de vincular a nota da tarefa
+
+## Como rodar o programa
+
+1. Clone o repositório
+2. No cmd na pasta do projeto, digite npm install para instalar as dependencias
+3. Rode o projeto digitando node index.js
