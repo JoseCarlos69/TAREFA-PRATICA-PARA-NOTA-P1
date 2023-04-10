@@ -1,107 +1,109 @@
-const express = require('express');
 const fs = require('fs');
-const extractUrls = require('extract-urls');
-const app = express();
-const PORT =  process.env.PORT || 4250;
-const SECURE_PORT = process.env.SECURE_PORT || 7777;
+const path = require('path');
+const http = require('http');
 
-//Configuração do servidor
-const server = app.listen(PORT, () => {
-    console.log(`Servidor iniciado na porta ${PORT}`)
-});
+const server = http.createServer((req, res) => {
+  const reqUrl = req.url;
+  let filePath = path.join(__dirname, 'View', reqUrl === '/' ? 'index.html' : reqUrl);
+  const extname = path.extname(filePath);
+  let contentType = 'text/html';
 
-//Configuração do servidor seguro
-const secureServer = app.listen(SECURE_PORT, () => {
-    console.log(`Servidor seguro iniciado na porta ${SECURE_PORT}`)
-});
-
-//Rota para o arquivo index.html
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + 'View/index.html');
-});
-
-//Rota para os demais arquivos HTML
-app.get('/pagina1', (req, res) => {
-    const page = req.params.page;
-    res.sendFile(__dirname + 'View/pagina1.html');
-});
-
-app.get('/pagina2', (req, res) => {
-    const page = req.params.page;
-    res.sendFile(__dirname + 'View/pagina2.html');
-});
-
-app.get('/pagina3', (req, res) => {
-    const page = req.params.page;
-    res.sendFile(__dirname + 'View/pagina3.html');
-});
-
-app.get('/pagina4', (req, res) => {
-    const page = req.params.page;
-    res.sendFile(__dirname + 'View/pagina4.html');
-});
-
-//Rota para a página de erro 404
-app.use((req, res) => {
-    res.status(404).sendFile(__dirname + 'View/404.html');
-});
-
-//Inicia o servidor na porta definida, ou na porta de segurança em caso de falha
-app.listen(PORT, () => {
-    consolole.log(`Servidor iniciado na porta ${PORT}`);
-}).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.log(`A porta ${PORT} está ocupada. Iniciando na porta de segurança ${SECURE_PORT}`);
-        app.listen(SECURE_PORT, () => {
-            console.log(`Servidor iniciado na porta ${SECURE_PORT}`);
-        });
-    } else {
-        console.error('Erro ao iniciar o servidor:', err);
-    }
-});
-
-app.get('/entrada', (req, res) => {
-    const caminhoDoArquivo = __dirname + '/entrada/texto.md';
-
-    fs.readFile(caminhoDoArquivo, 'utf-8', (err, data) => {
-        if (err) {
-            console.error('Erro ao ler o arquivo:', err);
-            res.status(500).send('Erro ao ler o arquivo');
-            return;
-        }
-
-        res.send(data);
+  // Rota padrão para o index.html e do resto
+  if (!extname) {
+    filePath += '.html';
+  } else if (extname === '.css') {
+    contentType = 'text/css';
+  } else if (extname === '.js') {
+    contentType = 'text/javascript';
+  }
+// Rota para exibir o arquivo de texto
+  if (reqUrl === '/entrada/') {
+    const mdFile = path.join(__dirname, 'entrada', 'texto.md');
+    fs.readFile(mdFile, (err, data) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.write('Arquivo não encontrado.');
+        res.end();
+      } else {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        const html = `<html><body>${data.toString()}</body></html>`;
+        res.write(html);
+        res.end();
+      }
     });
-});
-
-app.get('/links', (req, res) => {
-    const caminhoDoArquivo = __dirname + '/entrada/texto.md';
-
-    fs.readFile(caminhoDoArquivo, 'utf-8', (err, data) => {
-        if (err) {
-            console.error('Erro ao ler o arquivo:', err);
-            res.status(500).send('Erro ao ler o arquivo');
-            return;
-        }
-
-        const urls = extractUrls(data);
-
-        if (urls.length === 0) {
-            res.send('Arquivo não apresenta link de URL');
+    // Rota para exibir os links do arquivo de texto
+  } else if (reqUrl === '/links/') {
+    const mdFile = path.join(__dirname, 'entrada', 'texto.md');
+    fs.readFile(mdFile, (err, data) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.write('Arquivo não encontrado.');
+        res.end();
+      } else {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        const links = data.toString().match(/\bhttps?:\/\/\S+/gi);
+        if (links) {
+          res.write(links.join('\n'));
         } else {
-            res.send(urls.join('<br>'));
+          res.write('Arquivo não apresenta link de URL');
         }
+        res.end();
+      }
     });
+    // Rota para validar o arquivo de texto
+  } else if (reqUrl === '/validar/') {
+    const mdFile = path.join(__dirname, 'entrada', 'texto.md');
+    fs.access(mdFile, fs.constants.F_OK, (err) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.write('Arquivo não encontrado.');
+        res.end();
+      } else {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.write('HTTP 200 OK');
+        res.end();
+      }
+    });
+  } else {
+    // Rota para lidar com o erro 404
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        if (err.code == 'ENOENT') {
+          res.writeHead(404, { 'Content-Type': 'text/html' });
+          const html = `<html><body><h1>404 Not Found</h1><p>The requested URL ${req.url} was not found on this server.</p></body></html>`;
+          res.write(html);
+          res.end();
+        } else {
+          res.writeHead(500, { 'Content-Type': 'text/html' });
+          const html = `<html><body><h1>500 Internal Server Error</h1><p>${err}</p></body></html>`;
+          res.write(html);
+          res.end();
+        }
+      } else {
+        res.writeHead(200, { 'Content-Type': contentType
+    });
+    res.write(content);
+    res.end();
+  }
+});
+}
 });
 
-app.get('/validar', (req, res) => {
-    const caminhoDoArquivo = __dirname + '/entrada/texto.md';
+// Verifica se a porta 4250 está ocupada, se sim, usa a porta 7777
 
-    fs.access(caminhoDoArquivo, fs.constants.F_OK, (err) => {
-        if (err) {
-            res.status(404).send('Arquivo não encontrado');
-        } else {
-            res.status(200).send('Arquivo encontrado');
-        }
-    });
+const PORT = 4250;
+const SECURE_PORT = 7777;
+
+server.listen(PORT, () => {
+console.log(`Server running at http://localhost:${PORT}/`);
+});
+
+server.on('error', (err) => {
+if (err.code === 'EADDRINUSE') {
+server.listen(SECURE_PORT, () => {
+console.log(`Server running at http://localhost:${SECURE_PORT}/`);
+});
+} else {
+console.error(err);
+}
 });
